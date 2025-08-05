@@ -4,7 +4,8 @@ const cors = require("cors");
 const admin = require("firebase-admin");
 const app = express();
 
-const serviceAccount = require(process.env.FIREBASE_PRIVATE_KEY_PATH);
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
