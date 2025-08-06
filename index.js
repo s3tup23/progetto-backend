@@ -1,41 +1,27 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const admin = require("firebase-admin");
+require('dotenv').config();
+const express = require('express');
 const app = express();
+const port = 3000;
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-const db = admin.firestore();
-
-app.use(cors());
 app.use(express.json());
 
-app.get("/ordini/:numeroOrdine", async (req, res) => {
-  const numeroOrdine = req.params.numeroOrdine;
+// Importa il modulo che gestisce l'invio dell’email
+const emailSender = require('./emailSender');
+
+// Rotta POST per invio mail
+app.post('/invia-mail', async (req, res) => {
   try {
-    const snapshot = await db.collection("registrazioni")
-      .where("ordineShopify", "==", numeroOrdine)
-      .limit(1)
-      .get();
-
-    if (snapshot.empty) {
-      return res.status(404).json({ success: false, message: "Ordine non trovato" });
-    }
-
-    const doc = snapshot.docs[0];
-    return res.json({ success: true, data: doc.data(), id: doc.id });
+    const result = await emailSender(req.body);
+    res.status(200).json({ message: 'Email inviata con successo', result });
   } catch (error) {
-    console.error("Errore:", error);
-    res.status(500).json({ success: false, error: "Errore interno" });
+    console.error('❌ Errore invio email:', error);
+    res.status(500).json({ error: 'Errore invio email' });
   }
 });
 
-app.listen(3000, () => {
-  console.log("✅ Server in ascolto su http://localhost:3000");
+console.log("🧪 Test log");
+
+// Avvio server UNA SOLA VOLTA
+app.listen(port, () => {
+  console.log(`🚀 Server in ascolto su http://localhost:${port}`);
 });
