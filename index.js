@@ -5,7 +5,8 @@ const admin = require('firebase-admin');
 const path = require('path');
 const sendConfirmationEmail = require('./emailSender');
 
-const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+// ✅ Carica la service account direttamente dalla variabile d'ambiente JSON
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -59,8 +60,8 @@ app.post('/registrazione', async (req, res) => {
   }
 });
 
-// ✅ Avvia server in locale
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server avviato su porta ${PORT}`);
+// ✅ Avvia server
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`🚀 Server avviato su porta ${port}`);
 });
