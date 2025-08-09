@@ -116,6 +116,70 @@ app.get('/admin/registrazioni', async (req, res) => {
   }
 });
 
+// 🔧 Admin: purge registrazioni di test / vecchie / per ID
+app.post('/admin/purge-registrazioni', async (req, res) => {
+  try {
+    const key = req.headers['x-api-key'];
+    if (!key || key !== process.env.ADMIN_API_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { dryRun = true, idList = [], ordinePrefix, emailDomain, createdBefore } = req.body || {};
+
+    const snap = await db.collection('registrazioni').limit(1000).get();
+    const toDelete = [];
+
+    const cutoff = createdBefore ? new Date(createdBefore) : null;
+    const isValidDate = d => d instanceof Date && !isNaN(d.getTime());
+
+    snap.forEach(doc => {
+      const data = doc.data() || {};
+      const id = doc.id;
+
+      let match = false;
+
+      if (idList?.length && idList.includes(id)) match = true;
+
+      if (!match && ordinePrefix && typeof data.ordineShopify === 'string') {
+        if (data.ordineShopify.startsWith(ordinePrefix)) match = true;
+      }
+
+      if (!match && emailDomain && typeof data.email === 'string') {
+        if (data.email.toLowerCase().endsWith(`@${emailDomain.toLowerCase()}`)) match = true;
+      }
+
+      if (!match && cutoff) {
+        const base = data.createdAt || data.data_acquisto;
+        if (base) {
+          const d = new Date(base);
+          if (isValidDate(d) && d < cutoff) match = true;
+        }
+      }
+
+      if (match) toDelete.push(doc.ref);
+    });
+
+    if (dryRun) {
+      return res.status(200).json({ dryRun: true, wouldDelete: toDelete.length });
+    }
+
+    let deleted = 0;
+    while (toDelete.length) {
+      const chunk = toDelete.splice(0, 400);
+      const batch = db.batch();
+      chunk.forEach(ref => batch.delete(ref));
+      await batch.commit();
+      deleted += chunk.length;
+    }
+
+    return res.status(200).json({ deleted });
+  } catch (err) {
+    console.error('❌ Purge error:', err);
+    return res.status(500).json({ error: 'Errore purge' });
+  }
+});
+
+
 // Avvio server
 app.listen(port, () => {
   console.log(`🚀 Server attivo su porta ${port}`);
