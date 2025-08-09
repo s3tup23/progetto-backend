@@ -65,6 +65,27 @@ app.get('/ordini/:numeroOrdine', async (req, res) => {
   }
 });
 
+// 🔐 Endpoint admin: lista registrazioni (protetto da API key)
+app.get('/admin/registrazioni', async (req, res) => {
+  try {
+    const key = req.query.key || req.headers['x-api-key'];
+    if (!key || key !== process.env.ADMIN_API_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Leggi max 500 registrazioni (ordinabili in futuro)
+    const snap = await db.collection('registrazioni').limit(500).get();
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    res.status(200).json({ items, count: items.length });
+  } catch (err) {
+    console.error('❌ Errore lista registrazioni:', err);
+    res.status(500).json({ error: 'Errore del server' });
+  }
+});
+
+
+
 // Avvio server
 app.listen(port, () => {
   console.log(`🚀 Server attivo su porta ${port}`);
