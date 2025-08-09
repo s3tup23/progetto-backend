@@ -21,6 +21,7 @@ app.use(cors({
 }));
 app.options('/registrazione', cors());
 app.options('/admin/registrazioni', cors());
+app.options('/admin/purge-registrazioni', cors());
 app.use(express.json());
 
 // Servi immagini come statiche (URL pubblico)
