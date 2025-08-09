@@ -21,6 +21,8 @@ app.use(cors({
 }));
 app.options('/registrazione', cors());
 app.use(express.json());
+app.use('/email-assets/images', express.static(require('path').join(__dirname, 'email-assets', 'images')));
+
 
 // Servi immagini come statiche (URL pubblico)
 app.use('/email-assets/images',
