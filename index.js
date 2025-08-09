@@ -17,8 +17,11 @@ const db = admin.firestore();
 app.use(cors({
   origin: true,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
 }));
+app.options('/registrazione', cors());
+app.options('/admin/registrazioni', cors());
+
 app.options('/registrazione', cors());
 app.use(express.json());
 app.use('/email-assets/images', express.static(require('path').join(__dirname, 'email-assets', 'images')));
