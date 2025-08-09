@@ -33,24 +33,61 @@ app.use('/email-assets/images',
 );
 
 // POST /registrazione — salva + email
-app.post('/registrazione', async (req, res) => {
+aapp.post('/registrazione', async (req, res) => {
   try {
     const dati = req.body || {};
-    const docId = dati.ordineShopify && String(dati.ordineShopify).trim();
 
-    if (docId) {
-      await db.collection('registrazioni').doc(docId).set(dati);
-    } else {
-      await db.collection('registrazioni').add(dati);
+    // ✅ Normalizza e valida i campi minimi
+    const required = ['nome','cognome','email','modello','serial','luogo','data_acquisto'];
+    for (const f of required) {
+      if (!dati[f] || String(dati[f]).trim() === '') {
+        return res.status(400).json({ error: `Campo mancante: ${f}` });
+      }
     }
 
-    await sendConfirmationEmail(dati);
+    // ✅ Calcola scadenza: +24 mesi solari dalla data_acquisto (attesa come YYYY-MM-DD)
+    const parseISO = (s) => {
+      // accetta anche DD/MM/YYYY
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        const [dd,mm,yyyy] = s.split('/');
+        return new Date(`${yyyy}-${mm}-${dd}T00:00:00Z`);
+      }
+      return new Date(`${s}T00:00:00Z`);
+    };
+
+    const d = parseISO(String(dati.data_acquisto));
+    if (isNaN(d.getTime())) {
+      return res.status(400).json({ error: 'data_acquisto non valida' });
+    }
+    const scadenza = new Date(d);
+    scadenza.setMonth(scadenza.getMonth() + 24);
+
+    // ✅ Arricchisci l’oggetto da salvare
+    const payload = {
+      ...dati,
+      data_acquisto: d.toISOString().slice(0,10),                 // YYYY-MM-DD
+      scadenza_garanzia: scadenza.toISOString().slice(0,10),      // YYYY-MM-DD
+      createdAt: new Date().toISOString()
+    };
+
+    // ✅ Persisti (ID = ordineShopify se presente, altrimenti ID auto)
+    const docId = dati.ordineShopify && String(dati.ordineShopify).trim();
+    if (docId) {
+      await db.collection('registrazioni').doc(docId).set(payload);
+    } else {
+      await db.collection('registrazioni').add(payload);
+    }
+
+    // ✅ Invia email (l’HTML userà l’immagine come già fatto)
+    await sendConfirmationEmail(payload);
+
     res.status(200).json({ message: 'Garanzia registrata con successo' });
   } catch (err) {
     console.error('❌ Errore registrazione:', err);
     res.status(500).json({ error: 'Errore durante la registrazione' });
   }
 });
+
 
 // GET /ordini/:numeroOrdine — recupera registrazione
 app.get('/ordini/:numeroOrdine', async (req, res) => {
