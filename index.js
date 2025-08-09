@@ -21,19 +21,15 @@ app.use(cors({
 }));
 app.options('/registrazione', cors());
 app.options('/admin/registrazioni', cors());
-
-app.options('/registrazione', cors());
 app.use(express.json());
-app.use('/email-assets/images', express.static(require('path').join(__dirname, 'email-assets', 'images')));
-
 
 // Servi immagini come statiche (URL pubblico)
-app.use('/email-assets/images',
-  express.static(path.join(__dirname, 'email-assets', 'images'))
-);
+app.use('/email-assets/images', express.static(
+  path.join(__dirname, 'email-assets', 'images')
+));
 
 // POST /registrazione — salva + email
-aapp.post('/registrazione', async (req, res) => {
+app.post('/registrazione', async (req, res) => {
   try {
     const dati = req.body || {};
 
@@ -45,9 +41,8 @@ aapp.post('/registrazione', async (req, res) => {
       }
     }
 
-    // ✅ Calcola scadenza: +24 mesi solari dalla data_acquisto (attesa come YYYY-MM-DD)
+    // ✅ Calcola scadenza: +24 mesi solari dalla data_acquisto (YYYY-MM-DD o DD/MM/YYYY)
     const parseISO = (s) => {
-      // accetta anche DD/MM/YYYY
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
         const [dd,mm,yyyy] = s.split('/');
         return new Date(`${yyyy}-${mm}-${dd}T00:00:00Z`);
@@ -62,11 +57,11 @@ aapp.post('/registrazione', async (req, res) => {
     const scadenza = new Date(d);
     scadenza.setMonth(scadenza.getMonth() + 24);
 
-    // ✅ Arricchisci l’oggetto da salvare
+    // ✅ Payload da salvare
     const payload = {
       ...dati,
-      data_acquisto: d.toISOString().slice(0,10),                 // YYYY-MM-DD
-      scadenza_garanzia: scadenza.toISOString().slice(0,10),      // YYYY-MM-DD
+      data_acquisto: d.toISOString().slice(0,10),            // YYYY-MM-DD
+      scadenza_garanzia: scadenza.toISOString().slice(0,10), // YYYY-MM-DD
       createdAt: new Date().toISOString()
     };
 
@@ -78,7 +73,7 @@ aapp.post('/registrazione', async (req, res) => {
       await db.collection('registrazioni').add(payload);
     }
 
-    // ✅ Invia email (l’HTML userà l’immagine come già fatto)
+    // ✅ Invia email
     await sendConfirmationEmail(payload);
 
     res.status(200).json({ message: 'Garanzia registrata con successo' });
@@ -87,7 +82,6 @@ aapp.post('/registrazione', async (req, res) => {
     res.status(500).json({ error: 'Errore durante la registrazione' });
   }
 });
-
 
 // GET /ordini/:numeroOrdine — recupera registrazione
 app.get('/ordini/:numeroOrdine', async (req, res) => {
@@ -112,19 +106,14 @@ app.get('/admin/registrazioni', async (req, res) => {
     if (!key || key !== process.env.ADMIN_API_KEY) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-
-    // Leggi max 500 registrazioni (ordinabili in futuro)
     const snap = await db.collection('registrazioni').limit(500).get();
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
     res.status(200).json({ items, count: items.length });
   } catch (err) {
     console.error('❌ Errore lista registrazioni:', err);
     res.status(500).json({ error: 'Errore del server' });
   }
 });
-
-
 
 // Avvio server
 app.listen(port, () => {
