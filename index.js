@@ -178,7 +178,19 @@ app.post('/admin/purge-registrazioni', async (req, res) => {
     return res.status(500).json({ error: 'Errore purge' });
   }
 });
+// ---- ping
+app.get('/health', (_, res) => res.json({ ok: true }));
+app.get('/',        (_, res) => res.json({ ok: true, service: 'stewart-backend' }));
 
+// ---- unlock (staff)
+app.post('/auth/unlock', (req, res) => {
+  const key = req.header('x-admin-key') || (req.body && req.body.key) || (req.query && req.query.key);
+  const ADMIN = process.env.ADMIN_UNLOCK_KEY || process.env.ADMIN_API_KEY || '';
+  if (!ADMIN) return res.status(500).json({ error: 'ADMIN_UNLOCK_KEY non configurata' });
+  if (!key || key !== ADMIN) return res.status(401).json({ error: 'Chiave non valida.' });
+  const token = Buffer.from(`${Date.now()}:${Math.random()}`).toString('base64url');
+  res.json({ token, expiresInSec: 1800, scopes: ['nuovo','permuta','usato'] });
+});
 
 // Avvio server
 app.listen(port, () => {
