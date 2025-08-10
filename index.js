@@ -179,6 +179,9 @@ app.post('/admin/purge-registrazioni', async (req, res) => {
   }
 });
 
+// ---- ping
+app.get('/health', (_, res) => res.json({ ok: true }));
+app.get('/',        (_, res) => res.json({ ok: true, service: 'stewart-backend' }));
 
 // Avvio server
 app.listen(port, () => {
